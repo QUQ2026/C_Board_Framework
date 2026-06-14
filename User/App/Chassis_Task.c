@@ -1,5 +1,12 @@
 #include "Chassis_Task.h"
 
+static float NormalizeAngle(float angle)//角度归一化
+{
+    angle = fmodf(angle, 360.0f);
+    if (angle >  180.0f) angle -= 360.0f;
+    if (angle < -180.0f) angle += 360.0f;
+    return angle;
+}
 
 uint8_t Motor_PID_Chassis_Init(MOTOR_Typdef *MOTOR)
 {
