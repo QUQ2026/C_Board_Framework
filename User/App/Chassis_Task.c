@@ -156,3 +156,59 @@ uint8_t chassis_task(CONTAL_Typedef *CONTAL,
 }
 
 
+//底盘mode
+void Chassis_Normal(CONTAL_Typedef *CONTAL, DBUS_Typedef *DBUS, MOTOR_Typdef *MOTOR)//普通模式
+{
+    /* 旋转速度：拨轮映射 */
+    CONTAL->BOTTOM.VW = DBUS->Remote.CH3 * (VW_MAX / REMOTE_SCALE);
+
+    /* 读取 Yaw 电机编码器，计算云台相对底盘偏角（度） */
+    float raw_angle = fmodf(MOTOR->DJI_6020_Yaw.DATA.Angle_now * 360.0f / 8192.0f, 360.0f);
+    float gimbal_deg = NormalizeAngle(raw_angle);
+
+    /* 坐标变换 + 全向轮逆解 */
+    ApplyGimbalTransform(CONTAL, DBUS, gimbal_deg);
+    OmniResolve(CONTAL);
+}
+
+
+void Chassis_Gyroscope(CONTAL_Typedef *CONTAL, DBUS_Typedef *DBUS, IMU_Data_t *IMU)//小陀螺
+{
+    /* 固定旋转速度 */
+    CONTAL->BOTTOM.VW = GYROSCOPE_W;
+
+    /* 使用陀螺仪 yaw（不修改原始值，局部变量归一化）*/
+    float gimbal_deg = NormalizeAngle(IMU->yaw);
+
+    /* 坐标变换 + 全向轮逆解 */
+    ApplyGimbalTransform(CONTAL, DBUS, gimbal_deg);
+    OmniResolve(CONTAL);
+}
+
+
+void Chassis_Follow_Gimbal(CONTAL_Typedef *CONTAL, DBUS_Typedef *DBUS, IMU_Data_t *IMU)//底盘跟随
+{
+    /* 读取云台偏角（陀螺仪 yaw，归一化到 [-180, 180]）*/
+    float gimbal_deg = NormalizeAngle(IMU->yaw);
+
+    /* 期望云台对准的角度：通常为 0（正前方）
+     * 若需要遥控拨轮微调方向，可用 CH2 映射；默认跟随正前方，target=0 */
+    float target_deg = 0.0f;
+    /* 如需拨轮微调，取消下行注释：
+     * target_deg = DBUS->Remote.CH2 * (180.0f / REMOTE_SCALE); */
+
+    /* 角度误差，映射到 [-180, 180] 防止反绕 */
+    float angle_err = NormalizeAngle(target_deg - gimbal_deg);
+
+    /* PD 控制计算期望底盘转速 */
+    float vw = FOLLOW_KP * angle_err
+             + FOLLOW_KD * (angle_err - s_last_angle_err);
+    s_last_angle_err = angle_err;
+
+    /* 限幅 */
+    CONTAL->BOTTOM.VW = Clamp(vw, VW_MAX);
+
+    /* 坐标变换 + 全向轮逆解 */
+    ApplyGimbalTransform(CONTAL, DBUS, gimbal_deg);
+    OmniResolve(CONTAL);
+}
