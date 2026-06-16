@@ -20,14 +20,79 @@ void RobotTask(uint8_t mode,
 							VT13_Typedef* VT13_DBUS)
 {
     switch (mode) {
-
         case 1://底盘
-        {
+         if (Root->RM_DBUS == RUI_DF_OFFLINE)
+            {
+                CONTAL->BOTTOM.VX    = 0.0f;
+                CONTAL->BOTTOM.VY    = 0.0f;
+                CONTAL->BOTTOM.VW    = 0.0f;
+                CONTAL->BOTTOM.wheel1 = 0.0f;
+                CONTAL->BOTTOM.wheel2 = 0.0f;
+                CONTAL->BOTTOM.wheel3 = 0.0f;
+                CONTAL->BOTTOM.wheel4 = 0.0f;
+                break;
+            }
 
+            /* -------- 底盘模式选择（S2 拨轮）-------- */
+            switch ((Chassis_Mode_e)DBUS->Remote.S2)
+            {
+                case CHASSIS_MODE_FOLLOW:
+                    /* 底盘跟随云台：PID 驱动底盘对准云台方向，平移仍以云台视角 */
+                    Chassis_Follow_Gimbal(CONTAL, DBUS, IMU_Data);
+                    break;
+
+                case CHASSIS_MODE_NORMAL:
+                    /* 普通模式：拨轮控制旋转，平移以云台视角（编码器）*/
+                    Chassis_Normal(CONTAL, DBUS, MOTOR);
+                    break;
+
+                case CHASSIS_MODE_GYRO:
+                    /* 小陀螺：底盘固定转速自旋，操作手仍可平移 */
+                    Chassis_Gyroscope(CONTAL, DBUS, IMU_Data);
+                    break;
+
+                default:
+                    /* 未知模式：停止 */
+                    CONTAL->BOTTOM.VX = 0.0f;
+                    CONTAL->BOTTOM.VY = 0.0f;
+                    CONTAL->BOTTOM.VW = 0.0f;
+                    break;
+            }
+
+            /* -------- 调试监视 -------- */
+            monitor_X = CONTAL->BOTTOM.VX;
+            monitor_Y = CONTAL->BOTTOM.VY;
+            monitor_W = CONTAL->BOTTOM.VW;
         } break;
-
         case 2://云台
         {
+            switch (DBUS->Remote.S2)
+            {
+                case 1:
+                    /* 底盘跟随模式：云台目标锁定，底盘 PID 跟随 */
+                    Gimbal_Set_Target_Follow(CONTAL, DBUS, IMU_Data);
+                    break;
+
+                case 2:
+                    /* 普通模式：摇杆累加控制云台目标角度 */
+                    Gimbal_Set_Target_RC(CONTAL, DBUS, IMU_Data);
+                    break;
+
+                case 3:
+                    /* 小陀螺模式：摇杆控制云台，陀螺仪稳定云台绝对方向不变 */
+                    Gimbal_Set_Target_RC(CONTAL, DBUS, IMU_Data);
+                    break;
+
+                default:
+                    break;
+            }
+
+            /* -------- 串级PID计算 + CAN发送 -------- */
+            gimbal_task(CONTAL, Root, MOTOR, IMU_Data);
+
+            /* -------- 调试监视 -------- */
+            yaw_TD   = CONTAL->HEAD.Yaw;
+            pitch_TD = CONTAL->HEAD.Pitch;
 
         } break;
 

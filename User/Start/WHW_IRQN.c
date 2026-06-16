@@ -24,7 +24,45 @@ void StartMoveTask(void const * argument)
 
     for (;;)
     {
-    DJI_Current_Ctrl(&hcan1,0x200,0,0,400,0);
+    	RobotTask(2,
+				   &DBUS,
+				   &RUI_V_CONTAL,
+				   &User_data,
+				   &CAPDATE,
+				   &VISION_V_DATA,
+				   &RUI_ROOT_STATUS,
+				   &ALL_MOTOR,
+				   &IMU_Data,
+				   &TDDDD ,
+				   &VT13);
+
+    	/* ---- 底盘速度目标计算（case 1）---- */
+    	RobotTask(1,
+				  &DBUS,
+				  &RUI_V_CONTAL,
+				  &User_data,
+				  &CAPDATE,
+				  &VISION_V_DATA,
+				  &RUI_ROOT_STATUS,
+				  &ALL_MOTOR,
+				  &IMU_Data,
+				  &TDDDD,
+				  &VT13);
+
+    	/* ---- 云台串级PID计算 + CAN发送 ---- */
+    	gimbal_task(&RUI_V_CONTAL,
+					&RUI_ROOT_STATUS,
+					&ALL_MOTOR,
+					&IMU_Data);
+
+    	/* ---- 底盘速度PID + 功率控制 + CAN发送 ---- */
+    	chassis_task(&RUI_V_CONTAL,
+					 &RUI_ROOT_STATUS,
+					 &User_data,
+					 &model,
+					 &CAPDATE.GET,
+					 &ALL_MOTOR);
+
     	vTaskDelay (1);
     }
 }

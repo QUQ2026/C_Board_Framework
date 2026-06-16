@@ -9,17 +9,9 @@ static float NormalizeAngle(float angle)//角度归一化
 }
 
 
-/**
-* @brief  坐标变换：将云台坐标系下的 VX/VY 转换到底盘坐标系，并写入 CONTAL->BOTTOM
- * @param  CONTAL        底盘控制结构体
- * @param  DBUS          遥控数据
- * @param  gimbal_deg    云台相对底盘的偏角（度），正方向：云台左转为正
- *
- * @note   引入前馈：用当前底盘转速预测一个周期后的角度，减小坐标偏移
- */
 static void ApplyGimbalTransform(CONTAL_Typedef *CONTAL,
                                  DBUS_Typedef   *DBUS,
-                                 float           gimbal_deg)
+                                 float           gimbal_deg)//云台坐标系向底盘转换
 {
     /* 前馈：预测下一周期底盘转到哪 */
     float angle_rad = (gimbal_deg + CONTAL->BOTTOM.VW * CHASSIS_LOOP_TIME_S * (180.0f / 3.14159265f))
