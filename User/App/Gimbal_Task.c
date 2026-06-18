@@ -9,9 +9,8 @@ static float Gimbal_Clamp(float val, float max, float min)//云台限幅
 
 uint8_t MOTOR_PID_Gimbal_INIT(MOTOR_Typdef *MOTOR)
 {
-    /* ----- Yaw 轴 ----- */
     float PID_P_Yaw[3] = { 1, 0, 0 };
-    float PID_S_Yaw[3] = { 20, 0, 0 };
+    float PID_S_Yaw[3] = { 10, 0, 0 };
 
     PID_Init(&MOTOR->DJI_6020_Yaw.PID_P,
              YAW_MOTOR_MAX_OUT, YAW_MOTOR_MAX_IOUT,
@@ -23,9 +22,8 @@ uint8_t MOTOR_PID_Gimbal_INIT(MOTOR_Typdef *MOTOR)
              PID_S_Yaw, 0, 0, 0, 0, 0,
              Integral_Limit | ErrorHandle);
 
-    /* ----- Pitch 轴 ----- */
     float PID_P_Pitch[3] = { 1, 0, 0 };
-    float PID_S_Pitch[3] = { 20,0, 0};
+    float PID_S_Pitch[3] = { 10,0, 0};
 
     PID_Init(&MOTOR->DJI_6020_Pitch.PID_P,
              PITCH_MOTOR_MAX_OUT, PITCH_MOTOR_MAX_IOUT,
@@ -53,8 +51,8 @@ static void Gimbal_PID_Calculate(MOTOR_Typdef *MOTOR, IMU_Data_t *IMU,
 
     /* ---- Yaw 轴内环：角速度误差 → 电流 ---- */
     /* 外环输出作为内环目标，补偿底盘旋转：
-     * 小陀螺时底盘转速会叠加到云台上，
-     * 用 CONTAL->CG.YAW_SPEED（底盘yaw角速度）前馈补偿 */
+      小陀螺时底盘转速会叠加到云台上，
+     用 CONTAL->CG.YAW_SPEED（底盘yaw角速度）前馈补偿 */
     PID_Calculate(&MOTOR->DJI_6020_Yaw.PID_S,
                   (float)MOTOR->DJI_6020_Yaw.DATA.Speed_now,
                   MOTOR->DJI_6020_Yaw.PID_P.Output);
